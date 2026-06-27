@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Página no encontrada — PayFlex Sales</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>body { font-family: system-ui, -apple-system, sans-serif; }</style>
+</head>
+<body class="min-h-screen flex items-center justify-center" style="background:#f8fafc;">
+  <div class="text-center px-8" style="max-width:500px;">
+    <div class="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-8"
+         style="background:linear-gradient(135deg,#4f46e5,#7c3aed);">
+      <span class="text-white font-black text-5xl">{{ code|default(404) }}</span>
+    </div>
+    <h1 class="text-slate-900 font-black text-4xl mb-4">
+      {% if code == 403 %}Acceso denegado{% else %}Página no encontrada{% endif %}
+    </h1>
+    <p class="text-slate-500 text-xl mb-10">
+      {{ msg|default('La página que buscas no existe o fue movida.') }}
+    </p>
+    <a href="/"
+       class="inline-block text-white font-bold text-lg px-8 py-4 rounded-xl hover:opacity-90 transition-all"
+       style="background:linear-gradient(135deg,#4f46e5,#7c3aed);">
+      ← Volver al Dashboard
+    </a>
+  </div>
+</body>
+</html>

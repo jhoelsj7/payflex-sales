@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}PayFlex Sales{% endblock %} — Gestión de Ventas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontSize: { 'base': ['16px', '1.6'], 'sm': ['14px', '1.5'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-size: 16px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: 10px;
+      font-size: 15px; font-weight: 500;
+      color: #cbd5e1; transition: all 0.15s;
+    }
+    .nav-link:hover { background: #334155; color: #fff; }
+    .nav-link.active { background: #4f46e5; color: #fff; }
+    .card { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+  </style>
+</head>
+<body class="bg-slate-100" style="font-family: system-ui, -apple-system, sans-serif;">
+
+<!-- ── Layout ───────────────────────────────────────────── -->
+<div class="flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="w-72 bg-slate-900 min-h-screen flex flex-col fixed top-0 left-0 z-30" style="box-shadow: 4px 0 20px rgba(0,0,0,.2);">
+
+    <!-- Logo -->
+    <div class="px-6 py-6 border-b border-slate-700">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl font-black"
+             style="background: linear-gradient(135deg,#6366f1,#4f46e5);">P</div>
+        <div>
+          <p class="text-white font-bold text-lg leading-tight">PayFlex Sales</p>
+          <p class="text-slate-400 text-sm mt-0.5">Gestión de Ventas</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-4 py-6 space-y-1">
+      <p class="text-slate-500 text-xs font-bold uppercase tracking-widest px-4 mb-3">Navegación</p>
+
+      <a href="{{ url_for('dashboard') }}"
+         class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Dashboard
+      </a>
+
+      <a href="{{ url_for('products') }}"
+         class="nav-link {% if request.endpoint == 'products' %}active{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z"/>
+        </svg>
+        Productos
+      </a>
+
+      <a href="{{ url_for('sales') }}"
+         class="nav-link {% if request.endpoint in ('sales','process_sale') %}active{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-2 4h14M9 21a1 1 0 100-2 1 1 0 000 2zm10 0a1 1 0 100-2 1 1 0 000 2z"/>
+        </svg>
+        Nueva Venta
+      </a>
+
+      <a href="{{ url_for('customers') }}"
+         class="nav-link {% if request.endpoint == 'customers' %}active{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m4-4a4 4 0 100-8 4 4 0 000 8z"/>
+        </svg>
+        Clientes
+      </a>
+
+      <a href="{{ url_for('reports') }}"
+         class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Reportes
+      </a>
+    </nav>
+
+    <!-- Patrones -->
+    <div class="px-5 py-5 border-t border-slate-700">
+      <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mb-3">Patrones aplicados</p>
+      <div class="flex flex-wrap gap-2">
+        <span class="badge" style="background:#312e81;color:#a5b4fc;">Singleton</span>
+        <span class="badge" style="background:#1e1b4b;color:#c4b5fd;">Factory</span>
+        <span class="badge" style="background:#064e3b;color:#6ee7b7;">Observer</span>
+        <span class="badge" style="background:#78350f;color:#fcd34d;">Strategy</span>
+        <span class="badge" style="background:#7f1d1d;color:#fca5a5;">Facade</span>
+      </div>
+      <p class="text-slate-600 text-xs mt-4 text-center">Universidad LaSalle · 2026</p>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col" style="margin-left: 288px;">
+
+    <!-- Top bar -->
+    <header class="bg-white border-b border-slate-200 px-10 py-5 flex items-center justify-between sticky top-0 z-20"
+            style="box-shadow: 0 1px 6px rgba(0,0,0,.06);">
+      <div>
+        <h1 class="text-slate-900 font-bold text-2xl">{% block heading %}Dashboard{% endblock %}</h1>
+        <p class="text-slate-500 text-sm mt-0.5">{% block subheading %}Resumen general del sistema{% endblock %}</p>
+      </div>
+      {% set user = current_user() %}
+      {% if user %}
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-base"
+               style="background:{{ user.role_color }};">
+            {{ user.full_name[0].upper() }}
+          </div>
+          <div>
+            <p class="text-slate-900 font-semibold text-sm leading-tight">{{ user.full_name }}</p>
+            <p class="text-slate-400 text-xs">{{ user.role_label }}</p>
+          </div>
+        </div>
+        <a href="{{ url_for('logout') }}"
+           class="flex items-center gap-2 text-slate-500 hover:text-red-600 font-semibold text-sm transition-colors px-3 py-2 rounded-lg hover:bg-red-50">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+          Salir
+        </a>
+      </div>
+      {% endif %}
+    </header>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="px-10 pt-5 space-y-3">
+          {% for category, message in messages %}
+          <div class="flex items-center gap-3 px-5 py-4 rounded-xl text-base font-medium
+            {% if category == 'success' %}bg-emerald-50 text-emerald-800 border border-emerald-200
+            {% else %}bg-red-50 text-red-800 border border-red-200{% endif %}">
+            {% if category == 'success' %}
+              <svg class="w-5 h-5 flex-shrink-0 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+            {% else %}
+              <svg class="w-5 h-5 flex-shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
+            {% endif %}
+            {{ message }}
+          </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Content -->
+    <div class="flex-1 px-10 py-8">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

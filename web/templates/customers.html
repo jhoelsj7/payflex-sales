@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Clientes{% endblock %}
+{% block heading %}Gestión de Clientes{% endblock %}
+{% block subheading %}Directorio completo de clientes regulares, VIP y corporativos{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-7">
+
+  <!-- ── Formulario ──────────────────────────────────── -->
+  <div class="xl:col-span-1">
+    <div class="card overflow-hidden">
+      <div class="px-7 py-6" style="background:linear-gradient(135deg,#0f172a,#1e3a5f);">
+        <h2 class="text-white font-bold text-xl">Nuevo cliente</h2>
+        <p class="text-blue-200 text-sm mt-1">Agrega contactos a tu directorio</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('add_customer') }}" class="p-7 space-y-5">
+
+        <div>
+          <label class="block text-slate-700 font-bold text-base mb-2">Nombre / Empresa *</label>
+          <input type="text" name="name" required placeholder="Ej: Tech Solutions SAC"
+                 class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                        focus:outline-none focus:border-indigo-500 placeholder-slate-300"/>
+        </div>
+
+        <div>
+          <label class="block text-slate-700 font-bold text-base mb-2">Categoría</label>
+          <select name="category"
+                  class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                         focus:outline-none focus:border-indigo-500 bg-white">
+            <option value="regular">👤 Regular</option>
+            <option value="vip">⭐ VIP</option>
+            <option value="corporativo">🏢 Corporativo</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-700 font-bold text-base mb-2">Teléfono</label>
+            <input type="text" name="phone" placeholder="999-000-111"
+                   class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                          focus:outline-none focus:border-indigo-500 placeholder-slate-300"/>
+          </div>
+          <div>
+            <label class="block text-slate-700 font-bold text-base mb-2">Ciudad</label>
+            <input type="text" name="city" placeholder="Lima"
+                   class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                          focus:outline-none focus:border-indigo-500 placeholder-slate-300"/>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-700 font-bold text-base mb-2">Correo electrónico</label>
+          <input type="email" name="email" placeholder="contacto@empresa.com"
+                 class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                        focus:outline-none focus:border-indigo-500 placeholder-slate-300"/>
+        </div>
+
+        <div>
+          <label class="block text-slate-700 font-bold text-base mb-2">RUC</label>
+          <input type="text" name="ruc" placeholder="20123456789 (opcional)"
+                 class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                        focus:outline-none focus:border-indigo-500 placeholder-slate-300"/>
+        </div>
+
+        <div>
+          <label class="block text-slate-700 font-bold text-base mb-2">Notas</label>
+          <textarea name="notes" rows="3" placeholder="Observaciones..."
+                    class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                           focus:outline-none focus:border-indigo-500 placeholder-slate-300 resize-none"></textarea>
+        </div>
+
+        <button type="submit"
+                class="w-full text-white font-bold text-base py-4 rounded-xl hover:opacity-90 transition-all"
+                style="background:linear-gradient(135deg,#0f172a,#1e3a5f);">
+          + Agregar cliente
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Tabla de clientes ───────────────────────────── -->
+  <div class="xl:col-span-2 space-y-6">
+
+    <!-- Stats rápidas -->
+    <div class="grid grid-cols-3 gap-4">
+      {% set total = customers|length %}
+      {% set vips  = customers|selectattr('category','eq','vip')|list|length %}
+      {% set corps = customers|selectattr('category','eq','corporativo')|list|length %}
+      <div class="card p-5 text-center">
+        <p class="text-3xl font-black text-slate-900">{{ total }}</p>
+        <p class="text-slate-400 text-sm font-semibold mt-1">Total clientes</p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-3xl font-black" style="color:#b45309;">{{ vips }}</p>
+        <p class="text-slate-400 text-sm font-semibold mt-1">Clientes VIP</p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="text-3xl font-black" style="color:#1d4ed8;">{{ corps }}</p>
+        <p class="text-slate-400 text-sm font-semibold mt-1">Corporativos</p>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card overflow-hidden">
+      <div class="px-7 py-5 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 class="text-slate-900 font-bold text-xl">Directorio de clientes</h2>
+          <p class="text-slate-400 text-base mt-0.5">{{ customers|length }} registros en BD</p>
+        </div>
+      </div>
+
+      {% if customers %}
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr style="background:#f8fafc;">
+              <th class="px-6 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Cliente</th>
+              <th class="px-6 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Categoría</th>
+              <th class="px-6 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Contacto</th>
+              <th class="px-6 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Ciudad</th>
+              <th class="px-6 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">RUC</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in customers %}
+            <tr class="border-t border-slate-100 hover:bg-slate-50 transition-colors">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base flex-shrink-0"
+                       style="background:{% if c.category == 'vip' %}#d97706{% elif c.category == 'corporativo' %}#2563eb{% else %}#64748b{% endif %};">
+                    {{ c.name[0].upper() }}
+                  </div>
+                  <div>
+                    <p class="text-slate-900 font-semibold text-base">{{ c.name }}</p>
+                    {% if c.notes %}<p class="text-slate-400 text-sm truncate" style="max-width:180px;">{{ c.notes }}</p>{% endif %}
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                {% if c.category == 'vip' %}
+                  <span class="badge" style="background:#fef3c7;color:#92400e;">⭐ VIP</span>
+                {% elif c.category == 'corporativo' %}
+                  <span class="badge" style="background:#dbeafe;color:#1e40af;">🏢 Corporativo</span>
+                {% else %}
+                  <span class="badge" style="background:#f1f5f9;color:#475569;">👤 Regular</span>
+                {% endif %}
+              </td>
+              <td class="px-6 py-4">
+                <p class="text-slate-700 font-medium text-sm">{{ c.phone or '—' }}</p>
+                <p class="text-slate-400 text-sm">{{ c.email or '—' }}</p>
+              </td>
+              <td class="px-6 py-4 text-slate-600 font-medium text-base">{{ c.city or '—' }}</td>
+              <td class="px-6 py-4 font-mono text-sm text-slate-500">{{ c.ruc or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="py-20 text-center">
+        <p class="text-slate-500 font-bold text-xl">Sin clientes registrados</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

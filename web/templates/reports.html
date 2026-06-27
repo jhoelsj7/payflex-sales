@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block heading %}Reportes y Métricas{% endblock %}
+{% block subheading %}Historial completo de ventas — ReportObserver registra cada transacción{% endblock %}
+
+{% block content %}
+
+<!-- ── KPIs del reporte ───────────────────────────────── -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+
+  <div class="card p-7">
+    <p class="text-slate-400 font-semibold text-sm uppercase tracking-wide mb-2">Total acumulado</p>
+    <p class="text-slate-900 font-black" style="font-size:2.8rem;line-height:1;">
+      S/ {{ "%.2f"|format(report.total_ventas) }}
+    </p>
+    <p class="text-slate-400 text-sm mt-2">Suma de todas las ventas</p>
+  </div>
+
+  <div class="card p-7">
+    <p class="text-slate-400 font-semibold text-sm uppercase tracking-wide mb-2">Transacciones</p>
+    <p class="text-slate-900 font-black" style="font-size:2.8rem;line-height:1;">
+      {{ report.cantidad_transacciones }}
+    </p>
+    <p class="text-slate-400 text-sm mt-2">Ventas procesadas en total</p>
+  </div>
+
+  <div class="card p-7">
+    <p class="text-slate-400 font-semibold text-sm uppercase tracking-wide mb-2">Ticket promedio</p>
+    <p class="text-slate-900 font-black" style="font-size:2.8rem;line-height:1;">
+      {% if report.cantidad_transacciones > 0 %}
+        S/ {{ "%.2f"|format(report.total_ventas / report.cantidad_transacciones) }}
+      {% else %}—{% endif %}
+    </p>
+    <p class="text-slate-400 text-sm mt-2">Promedio por transacción</p>
+  </div>
+</div>
+
+<!-- ── Gráfico ────────────────────────────────────────── -->
+{% if report.cantidad_transacciones > 0 %}
+<div class="card p-7 mb-8">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-slate-900 font-bold text-xl">Totales por transacción</h2>
+      <p class="text-slate-400 text-base mt-0.5">Evolución de ventas en S/</p>
+    </div>
+  </div>
+  <canvas id="salesChart" height="75"></canvas>
+</div>
+{% endif %}
+
+<!-- ── Historial ─────────────────────────────────────── -->
+<div class="card overflow-hidden">
+  <div class="px-7 py-5 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <h2 class="text-slate-900 font-bold text-xl">Historial de ventas</h2>
+      <p class="text-slate-400 text-base mt-0.5">Datos persistidos en SQLite — surviven al reinicio</p>
+    </div>
+  </div>
+
+  {% if transactions %}
+  <div class="overflow-x-auto">
+    <table class="w-full">
+      <thead>
+        <tr style="background:#f8fafc;">
+          <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">#</th>
+          <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Fecha y hora</th>
+          <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Producto</th>
+          <th class="px-7 py-4 text-center text-slate-500 font-bold text-sm uppercase tracking-wide">Cant.</th>
+          <th class="px-7 py-4 text-right text-slate-500 font-bold text-sm uppercase tracking-wide">Precio u.</th>
+          <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Estrategia</th>
+          <th class="px-7 py-4 text-right text-slate-500 font-bold text-sm uppercase tracking-wide">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr class="border-t border-slate-100 hover:bg-slate-50 transition-colors">
+          <td class="px-7 py-4 text-slate-400 font-semibold text-base">{{ loop.revindex }}</td>
+          <td class="px-7 py-4 font-mono text-sm text-slate-500 font-medium">
+            {{ tx.timestamp[:19].replace('T', ' ') }}
+          </td>
+          <td class="px-7 py-4">
+            <p class="text-slate-900 font-semibold text-base">{{ tx.product_name }}</p>
+          </td>
+          <td class="px-7 py-4 text-center">
+            <span class="text-slate-900 font-bold text-base">{{ tx.quantity }}</span>
+          </td>
+          <td class="px-7 py-4 text-right text-slate-600 font-medium text-base">
+            S/ {{ "%.2f"|format(tx.unit_price) }}
+          </td>
+          <td class="px-7 py-4">
+            <span class="badge" style="background:#e0e7ff;color:#3730a3;">{{ tx.strategy }}</span>
+          </td>
+          <td class="px-7 py-4 text-right">
+            <span class="text-slate-900 font-black text-xl">S/ {{ "%.2f"|format(tx.total) }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:#f0fdf4; border-top: 2px solid #bbf7d0;">
+          <td colspan="6" class="px-7 py-5 text-right font-bold text-slate-700 text-base uppercase tracking-wide">
+            Total acumulado
+          </td>
+          <td class="px-7 py-5 text-right font-black text-emerald-700" style="font-size:1.5rem;">
+            S/ {{ "%.2f"|format(report.total_ventas) }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  {% else %}
+  <div class="py-20 text-center">
+    <div class="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
+         style="background:#f1f5f9;">
+      <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+    </div>
+    <p class="text-slate-600 font-bold text-xl">Sin transacciones aún</p>
+    <a href="{{ url_for('sales') }}"
+       class="inline-block mt-3 text-indigo-600 font-semibold text-base hover:underline">
+      Procesar primera venta →
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% if report.cantidad_transacciones > 0 %}
+<script>
+const ctx = document.getElementById('salesChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ chart_labels | tojson }},
+    datasets: [{
+      label: 'Total (S/)',
+      data: {{ chart_data | tojson }},
+      backgroundColor: 'rgba(99,102,241,0.8)',
+      borderColor: '#4f46e5',
+      borderWidth: 2,
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: ctx => ' S/ ' + ctx.parsed.y.toFixed(2) }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: '#f1f5f9' },
+        ticks: {
+          font: { size: 13, weight: '600' },
+          color: '#64748b',
+          callback: v => 'S/ ' + v.toFixed(0)
+        }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 13, weight: '600' }, color: '#64748b' }
+      }
+    }
+  }
+});
+</script>
+{% endif %}
+
+{% endblock %}

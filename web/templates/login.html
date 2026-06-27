@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Iniciar sesión — PayFlex Sales</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%); }
+    input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
+  </style>
+</head>
+<body class="min-h-screen flex">
+
+  <!-- ── Lado izquierdo: branding ─────────────────────── -->
+  <div class="hidden lg:flex lg:w-3/5 gradient-bg flex-col justify-between p-14">
+
+    <!-- Logo -->
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center text-white font-black text-2xl">
+        P
+      </div>
+      <div>
+        <p class="text-white font-bold text-xl">PayFlex Sales</p>
+        <p class="text-indigo-300 text-sm">Sistema de Gestión de Ventas</p>
+      </div>
+    </div>
+
+    <!-- Centro: headline -->
+    <div>
+      <h1 class="text-white font-black leading-tight mb-6" style="font-size:3.2rem;">
+        Controla tus ventas<br/>
+        <span style="color:#a5b4fc;">con inteligencia</span>
+      </h1>
+      <p class="text-indigo-200 text-xl leading-relaxed mb-10" style="max-width:500px;">
+        Gestiona productos, procesa ventas con descuentos dinámicos y
+        visualiza reportes en tiempo real desde un solo lugar.
+      </p>
+
+      <!-- Features -->
+      <div class="space-y-4">
+        {% set features = [
+          ('📦', 'Inventario multi-categoría', 'Electrónicos, ropa y alimentos con atributos propios'),
+          ('💸', 'Estrategias de descuento flexibles', 'Porcentaje, VIP, temporada — intercambiables al instante'),
+          ('📊', 'Reportes con gráficos', 'Historial completo con métricas clave de negocio'),
+          ('👥', 'Gestión de clientes', 'Directorio con clasificación regular, VIP y corporativo'),
+        ] %}
+        {% for icon, title, desc in features %}
+        <div class="flex items-start gap-4">
+          <div class="w-10 h-10 bg-white bg-opacity-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0">
+            {{ icon }}
+          </div>
+          <div>
+            <p class="text-white font-semibold text-base">{{ title }}</p>
+            <p class="text-indigo-300 text-sm mt-0.5">{{ desc }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Footer branding -->
+    <div class="flex items-center gap-6">
+      <p class="text-indigo-400 text-sm">Universidad LaSalle · 2026</p>
+      <span class="text-indigo-600">·</span>
+      <p class="text-indigo-400 text-sm">Patrones SOLID aplicados</p>
+      <span class="text-indigo-600">·</span>
+      <p class="text-indigo-400 text-sm">Python + Flask + SQLite</p>
+    </div>
+  </div>
+
+  <!-- ── Lado derecho: formulario ─────────────────────── -->
+  <div class="w-full lg:w-2/5 flex flex-col justify-center px-8 sm:px-16 bg-white">
+
+    <!-- Mobile logo -->
+    <div class="flex items-center gap-3 mb-10 lg:hidden">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xl"
+           style="background:linear-gradient(135deg,#4f46e5,#7c3aed);">P</div>
+      <p class="font-bold text-xl text-slate-900">PayFlex Sales</p>
+    </div>
+
+    <div style="max-width: 400px; width: 100%;">
+      <h2 class="text-slate-900 font-black text-3xl mb-2">Bienvenido</h2>
+      <p class="text-slate-500 text-lg mb-10">Ingresa tus credenciales para continuar</p>
+
+      <!-- Flash error -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="flex items-center gap-3 px-5 py-4 rounded-xl mb-6 border-2
+          {% if category == 'error' %}bg-red-50 border-red-200 text-red-700
+          {% else %}bg-emerald-50 border-emerald-200 text-emerald-700{% endif %}">
+          <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+          </svg>
+          <span class="font-semibold text-base">{{ message }}</span>
+        </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" class="space-y-5">
+        <div>
+          <label class="block text-slate-700 font-bold text-base mb-2">Usuario</label>
+          <input type="text" name="username" required autofocus placeholder="Ej: admin"
+                 class="w-full border-2 border-slate-200 rounded-xl px-5 py-4 text-base font-medium text-slate-800
+                        placeholder-slate-300 transition-all"/>
+        </div>
+        <div>
+          <label class="block text-slate-700 font-bold text-base mb-2">Contraseña</label>
+          <input type="password" name="password" required placeholder="••••••••"
+                 class="w-full border-2 border-slate-200 rounded-xl px-5 py-4 text-base font-medium text-slate-800
+                        placeholder-slate-300 transition-all"/>
+        </div>
+
+        <button type="submit"
+                class="w-full text-white font-bold text-lg py-4 rounded-xl transition-all mt-2 hover:opacity-90"
+                style="background: linear-gradient(135deg,#4f46e5,#7c3aed);">
+          Iniciar sesión →
+        </button>
+      </form>
+
+      <!-- Credenciales de demo -->
+      <div class="mt-10 rounded-2xl p-5 border-2 border-slate-100" style="background:#f8fafc;">
+        <p class="text-slate-500 font-bold text-sm uppercase tracking-widest mb-4">Credenciales de demo</p>
+        <div class="space-y-3">
+          {% set demo_users = [
+            ('admin',      'admin123',  'Administrador', '#4f46e5'),
+            ('vendedor',   'venta456',  'Vendedor',      '#059669'),
+            ('supervisor', 'super789',  'Supervisor',    '#d97706'),
+          ] %}
+          {% for user, pw, role, color in demo_users %}
+          <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-white border border-slate-100">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                   style="background:{{ color }};">
+                {{ user[0].upper() }}
+              </div>
+              <div>
+                <p class="text-slate-900 font-semibold text-sm">{{ user }}</p>
+                <p class="text-slate-400 text-xs">{{ role }}</p>
+              </div>
+            </div>
+            <code class="text-slate-500 text-sm bg-slate-100 px-2 py-1 rounded-lg font-mono">{{ pw }}</code>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <p class="text-slate-300 text-sm text-center mt-8">
+        Universidad LaSalle · Fundamentos de Diseño de Software · 2026
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>
