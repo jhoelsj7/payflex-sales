@@ -27,6 +27,11 @@
     .nav-link.active { background: #4f46e5; color: #fff; }
     .card { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
     .badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+    #sidebar { transition: transform 0.2s ease; }
+    @media (max-width: 1023px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+    }
   </style>
 </head>
 <body class="bg-slate-100" style="font-family: system-ui, -apple-system, sans-serif;">
@@ -34,11 +39,15 @@
 <!-- ── Layout ───────────────────────────────────────────── -->
 <div class="flex min-h-screen">
 
+  <!-- Overlay (solo móvil, detrás del sidebar abierto) -->
+  <div id="sidebar-overlay" onclick="toggleSidebar(false)"
+       class="fixed inset-0 bg-black bg-opacity-40 z-20 hidden lg:hidden"></div>
+
   <!-- Sidebar -->
-  <aside class="w-72 bg-slate-900 min-h-screen flex flex-col fixed top-0 left-0 z-30" style="box-shadow: 4px 0 20px rgba(0,0,0,.2);">
+  <aside id="sidebar" class="w-72 bg-slate-900 min-h-screen flex flex-col fixed top-0 left-0 z-30 lg:translate-x-0" style="box-shadow: 4px 0 20px rgba(0,0,0,.2);">
 
     <!-- Logo -->
-    <div class="px-6 py-6 border-b border-slate-700">
+    <div class="px-6 py-6 border-b border-slate-700 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl font-black"
              style="background: linear-gradient(135deg,#6366f1,#4f46e5);">P</div>
@@ -47,6 +56,11 @@
           <p class="text-slate-400 text-sm mt-0.5">Gestión de Ventas</p>
         </div>
       </div>
+      <button onclick="toggleSidebar(false)" class="lg:hidden text-slate-400 hover:text-white p-1" aria-label="Cerrar menú">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
     </div>
 
     <!-- Nav -->
@@ -124,20 +138,27 @@
   </aside>
 
   <!-- Main -->
-  <main class="flex-1 flex flex-col" style="margin-left: 288px;">
+  <main class="flex-1 flex flex-col min-w-0 lg:ml-72">
 
     <!-- Top bar -->
-    <header class="bg-white border-b border-slate-200 px-10 py-5 flex items-center justify-between sticky top-0 z-20"
+    <header class="bg-white border-b border-slate-200 px-4 sm:px-10 py-4 sm:py-5 flex items-center justify-between gap-3 sticky top-0 z-10"
             style="box-shadow: 0 1px 6px rgba(0,0,0,.06);">
-      <div>
-        <h1 class="text-slate-900 font-bold text-2xl">{% block heading %}Dashboard{% endblock %}</h1>
-        <p class="text-slate-500 text-sm mt-0.5">{% block subheading %}Resumen general del sistema{% endblock %}</p>
+      <div class="flex items-center gap-3 min-w-0">
+        <button onclick="toggleSidebar(true)" class="lg:hidden text-slate-500 hover:text-slate-900 p-1 flex-shrink-0" aria-label="Abrir menú">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+        <div class="min-w-0">
+          <h1 class="text-slate-900 font-bold text-lg sm:text-2xl truncate">{% block heading %}Dashboard{% endblock %}</h1>
+          <p class="text-slate-500 text-sm mt-0.5 hidden sm:block">{% block subheading %}Resumen general del sistema{% endblock %}</p>
+        </div>
       </div>
       {% set user = current_user() %}
       {% if user %}
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
-          <div class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-base"
+      <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+        <div class="hidden sm:flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-base flex-shrink-0"
                style="background:{{ user.role_color }};">
             {{ user.full_name[0].upper() }}
           </div>
@@ -146,12 +167,16 @@
             <p class="text-slate-400 text-xs">{{ user.role_label }}</p>
           </div>
         </div>
+        <div class="sm:hidden w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-base flex-shrink-0"
+             style="background:{{ user.role_color }};">
+          {{ user.full_name[0].upper() }}
+        </div>
         <a href="{{ url_for('logout') }}"
-           class="flex items-center gap-2 text-slate-500 hover:text-red-600 font-semibold text-sm transition-colors px-3 py-2 rounded-lg hover:bg-red-50">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+           class="flex items-center gap-2 text-slate-500 hover:text-red-600 font-semibold text-sm transition-colors px-2 sm:px-3 py-2 rounded-lg hover:bg-red-50">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
           </svg>
-          Salir
+          <span class="hidden sm:inline">Salir</span>
         </a>
       </div>
       {% endif %}
@@ -160,7 +185,7 @@
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="px-10 pt-5 space-y-3">
+        <div class="px-4 sm:px-10 pt-5 space-y-3">
           {% for category, message in messages %}
           <div class="flex items-center gap-3 px-5 py-4 rounded-xl text-base font-medium
             {% if category == 'success' %}bg-emerald-50 text-emerald-800 border border-emerald-200
@@ -182,11 +207,17 @@
     {% endwith %}
 
     <!-- Content -->
-    <div class="flex-1 px-10 py-8">
+    <div class="flex-1 px-4 sm:px-10 py-6 sm:py-8">
       {% block content %}{% endblock %}
     </div>
   </main>
 </div>
 
+<script>
+function toggleSidebar(open) {
+  document.getElementById('sidebar').classList.toggle('open', open);
+  document.getElementById('sidebar-overlay').classList.toggle('hidden', !open);
+}
+</script>
 </body>
 </html>

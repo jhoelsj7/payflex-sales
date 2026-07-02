@@ -83,7 +83,7 @@
   <div class="xl:col-span-2 space-y-6">
 
     <!-- Stats rápidas -->
-    <div class="grid grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {% set total = customers|length %}
       {% set vips  = customers|selectattr('category','eq','vip')|list|length %}
       {% set corps = customers|selectattr('category','eq','corporativo')|list|length %}
