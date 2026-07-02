@@ -1,57 +1,65 @@
 """Capa de negocio: observadores de ventas (patrón Observer)."""
 from abc import ABC, abstractmethod
 
+from business.venta import Venta
 from data.database import DatabaseManager
 
 
-class SaleObserver(ABC):
+class IObservador(ABC):
     """Interfaz para observadores del ciclo de venta."""
 
     @abstractmethod
-    def update(self, product, quantity: int, total: float) -> None:
-        """Recibe notificación tras procesar una venta."""
+    def update(self, venta: Venta) -> None:
+        """Recibe notificación con la venta ya procesada."""
 
 
-class InventoryObserver(SaleObserver):
-    """Descuenta stock y emite alerta cuando el inventario es bajo."""
+class InventoryObserver(IObservador):
+    """Actúa como gestor de inventario: descuenta stock y alerta si es bajo."""
 
-    def update(self, product, quantity: int, total: float) -> None:
-        """Reduce el stock del producto y persiste el cambio."""
-        product.stock -= quantity
-        DatabaseManager().save_product(product)
-        if product.stock < 5:
+    def update(self, venta: Venta) -> None:
+        """Reduce el stock del producto vendido y persiste el cambio."""
+        producto = venta.producto
+        producto.stock -= venta.cantidad
+        DatabaseManager().save_product(producto)
+        if producto.stock < 5:
             print(
-                f"  [ALERTA] Stock bajo para '{product.name}'"
-                f" — quedan {product.stock} unidades"
+                f"  [ALERTA] Stock bajo para '{producto.name}'"
+                f" — quedan {producto.stock} unidades"
             )
 
 
-class ReportObserver(SaleObserver):
-    """Acumula el total de ventas e imprime resumen por transacción."""
+class ReportObserver(IObservador):
+    """Acumula un total en memoria e imprime resumen por transacción.
+
+    El reporte persistido (SalesFacade.get_sales_report) se calcula desde
+    la base de datos, no desde este acumulador: este observador solo sirve
+    como ejemplo de efecto secundario en tiempo real (log de consola).
+    """
 
     def __init__(self):
         """Inicializa el acumulador de ventas en cero."""
         self._total_sales: float = 0.0
 
     def get_total_sales(self) -> float:
-        """Retorna el total acumulado de todas las ventas registradas."""
+        """Retorna el total acumulado en memoria desde que arrancó el proceso."""
         return self._total_sales
 
-    def update(self, product, quantity: int, total: float) -> None:
+    def update(self, venta: Venta) -> None:
         """Acumula el total y muestra resumen de la transacción."""
+        total = venta.calcular_total()
         self._total_sales += total
         print(
-            f"  [Venta] {quantity}x '{product.name}'"
+            f"  [Venta] {venta.cantidad}x '{venta.producto.name}'"
             f" — S/ {total:.2f}"
         )
 
 
-class EmailObserver(SaleObserver):
+class EmailObserver(IObservador):
     """Stub de notificación por email tras cada venta (extensión sin modificar SaleManager)."""
 
-    def update(self, product, quantity: int, total: float) -> None:
+    def update(self, venta: Venta) -> None:
         """Simula el envío de email de confirmación."""
         print(
-            f"  [Email] Confirmacion enviada: {quantity}x '{product.name}'"
-            f" por S/ {total:.2f}"
+            f"  [Email] Confirmacion enviada: {venta.cantidad}x '{venta.producto.name}'"
+            f" por S/ {venta.calcular_total():.2f}"
         )

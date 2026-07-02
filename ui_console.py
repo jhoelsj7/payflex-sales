@@ -19,11 +19,12 @@ class ConsoleUI:
             '3': self._change_strategy,
             '4': self._show_stock,
             '5': self._show_history,
+            '6': self._undo_last_sale,
         }
         while True:
             self._print_menu()
             choice = input("\nOpcion: ").strip()
-            if choice == '6':
+            if choice == '7':
                 print("\nCerrando sistema... Hasta luego!")
                 break
             action = actions.get(choice)
@@ -42,7 +43,8 @@ class ConsoleUI:
         print("3. Cambiar estrategia de descuento")
         print("4. Consultar stock")
         print("5. Ver historial de ventas")
-        print("6. Salir")
+        print("6. Deshacer ultima venta")
+        print("7. Salir")
 
     # ── Opciones ────────────────────────────────────────────
 
@@ -124,6 +126,14 @@ class ConsoleUI:
                 f"{p.product_id:<12} {p.name:<25}"
                 f" S/ {p.price:>8.2f} {p.stock:>7} {p.category:<12}"
             )
+
+    def _undo_last_sale(self) -> None:
+        """Revierte la última venta procesada (patrón Command)."""
+        print("\n--- DESHACER ULTIMA VENTA ---")
+        if self._facade.deshacer_ultima_venta():
+            print("Venta revertida: stock restaurado y transaccion eliminada.")
+        else:
+            print("No hay ventas registradas para deshacer.")
 
     def _show_history(self) -> None:
         """Muestra el historial de transacciones y el total acumulado."""

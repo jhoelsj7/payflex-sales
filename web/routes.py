@@ -173,6 +173,16 @@ def process_sale():
         result=result, error=error)
 
 
+@app.route('/sales/undo', methods=['POST'])
+@login_required
+def undo_sale():
+    if _facade.deshacer_ultima_venta():
+        flash('Última venta revertida (stock restaurado).', 'success')
+    else:
+        flash('No hay ventas para deshacer.', 'error')
+    return redirect(url_for('sales'))
+
+
 @app.route('/strategy/set', methods=['POST'])
 @login_required
 def set_strategy():

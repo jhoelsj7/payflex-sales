@@ -6,6 +6,8 @@ from business.discount_strategies import (
     VIPClientStrategy,
 )
 from business.observers import InventoryObserver, ReportObserver
+from business.payment_adapter import IMetodoPago, PaymentAdapter
+from business.sale_commands import HistorialComandos, RegistrarVentaCommand
 from business.sale_manager import SaleManager
 from data.database import DatabaseManager
 from data.product_factory import (
@@ -18,8 +20,9 @@ from data.product_factory import (
 class SalesFacade:
     """Fachada que simplifica el acceso a los subsistemas de ventas.
 
-    Oculta la inicialización y coordinación de DatabaseManager,
-    SaleManager, observadores, estrategias y fábricas.
+    Oculta la inicialización y coordinación de DatabaseManager, SaleManager,
+    observadores, estrategias, fábricas, el adaptador de pago (Adapter) y el
+    historial de comandos reversibles (Command).
     """
 
     def __init__(self):
@@ -41,6 +44,8 @@ class SalesFacade:
             '3': VIPClientStrategy(),
             '4': SeasonalDiscountStrategy(),
         }
+        self._metodo_pago: IMetodoPago = PaymentAdapter()
+        self._historial = HistorialComandos()
 
     def get_available_products(self) -> list:
         """Retorna la lista de todos los productos disponibles en inventario."""
@@ -73,14 +78,19 @@ class SalesFacade:
         self._sale_manager.set_discount_strategy(strategy)
         return strategy.get_description()
 
-    def process_sale(self, product_id: str, quantity: int) -> dict:
-        """Procesa la venta de un producto y retorna el detalle de la transacción.
+    def process_sale(self, product_id: str, quantity: int, incluir_igv: bool = False) -> dict:
+        """Procesa la venta de un producto vía Command y cobra vía Adapter.
+
+        La venta se encapsula en un RegistrarVentaCommand (patrón Command) y se
+        ejecuta a través de HistorialComandos, lo que permite revertirla luego
+        con deshacer_ultima_venta(). El cobro se delega a IMetodoPago (patrón
+        Adapter); si la pasarela lo rechaza, la venta se deshace automáticamente.
 
         Returns:
             dict con claves: product, quantity, unit_price, total, strategy.
 
         Raises:
-            ValueError: si el producto no existe o el stock es insuficiente.
+            ValueError: si el producto no existe, el stock es insuficiente o el pago es rechazado.
         """
         product = self._db.get_product(product_id)
         if product is None:
@@ -89,19 +99,35 @@ class SalesFacade:
             raise ValueError(
                 f"Stock insuficiente. Disponible: {product.stock}, solicitado: {quantity}."
             )
-        total = self._sale_manager.process_sale(product, quantity)
+        comando = RegistrarVentaCommand(self._sale_manager, product, quantity, incluir_igv)
+        self._historial.ejecutar(comando)
+
+        if not self._metodo_pago.pagar(comando.total):
+            self._historial.deshacer_ultimo()
+            raise ValueError("El pago fue rechazado por la pasarela de pago.")
+
         return {
             'product': product.name,
             'quantity': quantity,
             'unit_price': product.price,
-            'total': total,
+            'total': comando.total,
             'strategy': self._sale_manager.get_strategy_description(),
         }
 
+    def deshacer_ultima_venta(self) -> bool:
+        """Revierte la última venta procesada (stock y transacción). Patrón Command."""
+        return self._historial.deshacer_ultimo()
+
     def get_sales_report(self) -> dict:
-        """Retorna reporte consolidado: total acumulado y lista de transacciones."""
+        """Retorna reporte consolidado calculado desde la base de datos.
+
+        Se calcula desde las transacciones persistidas (no desde el acumulador
+        en memoria de ReportObserver) para que quede consistente con ventas
+        deshechas mediante deshacer_ultima_venta().
+        """
+        transacciones = self._db.get_transactions()
         return {
-            'total_ventas': self._report_observer.get_total_sales(),
-            'cantidad_transacciones': len(self._db.get_transactions()),
-            'transacciones': self._db.get_transactions(),
+            'total_ventas': sum(tx['total'] for tx in transacciones),
+            'cantidad_transacciones': len(transacciones),
+            'transacciones': transacciones,
         }

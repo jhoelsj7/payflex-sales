@@ -167,6 +167,15 @@ class DatabaseManager:
             rows = s.query(TransactionModel).order_by(TransactionModel.id).all()
             return [self._row_to_dict(m) for m in rows]
 
+    def delete_transaction(self, product_id: str, timestamp: str) -> None:
+        """Elimina una transacción puntual (usado por RegistrarVentaCommand.undo)."""
+        with self._Session() as s:
+            row = s.query(TransactionModel).filter_by(
+                product_id=product_id, timestamp=timestamp).first()
+            if row:
+                s.delete(row)
+                s.commit()
+
     # ── Usuarios ──────────────────────────────────────────
 
     def get_user(self, username: str):

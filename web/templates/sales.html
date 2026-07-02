@@ -140,6 +140,13 @@
            style="background: linear-gradient(135deg,#4f46e5,#7c3aed);">
           + Nueva venta
         </a>
+
+        <form method="POST" action="{{ url_for('undo_sale') }}">
+          <button type="submit"
+                  class="w-full text-center text-red-600 font-semibold text-sm py-3 rounded-xl border-2 border-red-200 hover:bg-red-50 transition-all">
+            ↩ Deshacer última venta (patrón Command)
+          </button>
+        </form>
       </div>
     </div>
 
