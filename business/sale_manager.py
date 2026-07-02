@@ -1,18 +1,19 @@
 """Capa de negocio: sujeto del Observer y orquestador de ventas."""
 from business.discount_strategies import DiscountStrategy, NoDiscountStrategy
 from business.observers import IObservador
-from business.sale_decorators import ImpuestoDecorator, RegistroLogDecorator
-from business.venta import Venta
-from data.database import DatabaseManager
+from business.sale_decorators import RegistroLogDecorator
+from business.venta import Venta, VentaItem
+from data.database import Product
 
 
 class SaleManager:
     """Orquesta el proceso de venta aplicando Strategy y notificando Observer.
 
-    Actúa como Sujeto (Subject) del patrón Observer y como contexto
-    del patrón Strategy para los algoritmos de descuento. El total final
-    se calcula envolviendo la Venta con decoradores (patrón Decorator):
-    siempre se registra un log y, opcionalmente, se agrega IGV.
+    Actúa como Sujeto (Subject) del patrón Observer y como contexto del
+    patrón Strategy para los algoritmos de descuento. No persiste nada en
+    la base de datos: solo calcula el total y notifica a los observadores
+    (que sí descuentan stock). La persistencia del comprobante queda a
+    cargo de RegistrarVentaCommand, que conoce el tipo de comprobante.
     """
 
     def __init__(self):
@@ -38,36 +39,32 @@ class SaleManager:
         return self._strategy.get_description()
 
     def get_last_venta(self) -> Venta | None:
-        """Retorna la última Venta procesada (usada por RegistrarVentaCommand para deshacer)."""
+        """Retorna la última Venta procesada (usada por RegistrarVentaCommand)."""
         return self._last_venta
 
-    def process_sale(self, product, quantity: int, incluir_igv: bool = False) -> float:
-        """Procesa la venta: aplica descuento, decora el total, notifica y persiste.
+    def process_sale(self, items: list[tuple[Product, int]]) -> float:
+        """Procesa una venta con una o más líneas de producto (carrito).
+
+        La estrategia de descuento activa se aplica línea por línea (mismo
+        contrato `calculate_discount(precio, cantidad)` de siempre) y se
+        suman los resultados. El total se decora con RegistroLogDecorator
+        antes de notificar a los observadores.
 
         Returns:
-            Total de la venta (con descuento y, si se pide, IGV incluido).
+            Subtotal de la venta con descuento aplicado (sin IGV).
         """
-        subtotal = self._strategy.calculate_discount(product.price, quantity)
-        venta = Venta(producto=product, cantidad=quantity,
-                      descripcion_estrategia=self._strategy.get_description())
-        venta.monto_final = subtotal
+        venta_items = [VentaItem(producto=p, cantidad=q) for p, q in items]
+        subtotal_con_descuento = sum(
+            self._strategy.calculate_discount(vi.producto.price, vi.cantidad)
+            for vi in venta_items
+        )
 
-        componente = RegistroLogDecorator(venta)
-        if incluir_igv:
-            componente = ImpuestoDecorator(componente)
-        total = componente.calcular_total()
+        venta = Venta(items=venta_items, descripcion_estrategia=self._strategy.get_description())
+        venta.monto_final = subtotal_con_descuento
+        total = RegistroLogDecorator(venta).calcular_total()
 
         self._last_venta = venta
         self._notify_observers(venta)
-        DatabaseManager().save_transaction({
-            'product_id': product.product_id,
-            'product_name': product.name,
-            'quantity': quantity,
-            'unit_price': product.price,
-            'total': total,
-            'strategy': self._strategy.get_description(),
-            'timestamp': venta.timestamp,
-        })
         return total
 
     def _notify_observers(self, venta: Venta) -> None:

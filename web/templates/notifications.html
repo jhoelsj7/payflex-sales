@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Notificaciones{% endblock %}
+{% block heading %}Notificaciones{% endblock %}
+{% block subheading %}RF09 — alertas de stock bajo para el administrador (patrón Observer){% endblock %}
+
+{% block content %}
+<div class="card overflow-hidden">
+  <div class="px-7 py-5 border-b border-slate-100">
+    <h2 class="text-slate-900 font-bold text-xl">Alertas de stock bajo</h2>
+    <p class="text-slate-400 text-sm mt-0.5">Generadas por AdminNotificationObserver en cada venta</p>
+  </div>
+
+  {% if notifications %}
+  <div class="divide-y divide-slate-100">
+    {% for n in notifications %}
+    <div class="px-7 py-5 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+             style="background:{% if n.leida %}#f1f5f9{% else %}#fef3c7{% endif %};">
+          <span class="text-xl">{% if n.leida %}✓{% else %}⚠️{% endif %}</span>
+        </div>
+        <div>
+          <p class="text-slate-900 font-semibold text-base">{{ n.mensaje }}</p>
+          <p class="text-slate-400 text-sm">{{ n.timestamp[:19].replace('T', ' ') }}</p>
+        </div>
+      </div>
+      {% if not n.leida %}
+      <span class="badge" style="background:#fef3c7;color:#92400e;">NUEVA</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="py-20 text-center">
+    <p class="text-slate-600 font-semibold text-lg">Sin notificaciones</p>
+    <p class="text-slate-400 text-base mt-1">Aparecerán aquí cuando un producto baje de 5 unidades.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

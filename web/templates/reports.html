@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Reportes{% endblock %}
 {% block heading %}Reportes y Métricas{% endblock %}
-{% block subheading %}Historial completo de ventas — ReportObserver registra cada transacción{% endblock %}
+{% block subheading %}Historial completo de ventas — filtros por fecha, producto y total (RF06){% endblock %}
 
 {% block content %}
 
@@ -35,12 +35,42 @@
   </div>
 </div>
 
+<!-- ── Filtros (RF06) ───────────────────────────────────── -->
+<div class="card p-6 mb-8">
+  <form method="GET" action="{{ url_for('reports') }}" class="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+    <div>
+      <label class="block text-slate-500 text-xs font-semibold uppercase mb-1">Desde</label>
+      <input type="date" name="fecha_desde" value="{{ filtro.fecha_desde }}"
+             class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:border-indigo-400"/>
+    </div>
+    <div>
+      <label class="block text-slate-500 text-xs font-semibold uppercase mb-1">Hasta</label>
+      <input type="date" name="fecha_hasta" value="{{ filtro.fecha_hasta }}"
+             class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:border-indigo-400"/>
+    </div>
+    <div>
+      <label class="block text-slate-500 text-xs font-semibold uppercase mb-1">ID producto</label>
+      <input type="text" name="product_id" value="{{ filtro.product_id }}" placeholder="E01"
+             class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:border-indigo-400"/>
+    </div>
+    <div>
+      <label class="block text-slate-500 text-xs font-semibold uppercase mb-1">Total mínimo</label>
+      <input type="number" step="0.01" name="total_min" value="{{ filtro.total_min }}" placeholder="0.00"
+             class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:border-indigo-400"/>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="flex-1 bg-slate-800 text-white font-semibold text-sm px-4 py-2 rounded-lg hover:bg-slate-700">Filtrar</button>
+      <a href="{{ url_for('reports') }}" class="flex-1 text-center text-slate-500 font-semibold text-sm px-4 py-2 rounded-lg border-2 border-slate-200 hover:bg-slate-50">Limpiar</a>
+    </div>
+  </form>
+</div>
+
 <!-- ── Gráfico ────────────────────────────────────────── -->
 {% if report.cantidad_transacciones > 0 %}
 <div class="card p-7 mb-8">
   <div class="flex items-center justify-between mb-6">
     <div>
-      <h2 class="text-slate-900 font-bold text-xl">Totales por transacción</h2>
+      <h2 class="text-slate-900 font-bold text-xl">Totales por venta</h2>
       <p class="text-slate-400 text-base mt-0.5">Evolución de ventas en S/</p>
     </div>
   </div>
@@ -53,45 +83,52 @@
   <div class="px-7 py-5 border-b border-slate-100 flex items-center justify-between">
     <div>
       <h2 class="text-slate-900 font-bold text-xl">Historial de ventas</h2>
-      <p class="text-slate-400 text-base mt-0.5">Datos persistidos en SQLite — surviven al reinicio</p>
+      <p class="text-slate-400 text-base mt-0.5">Datos persistidos en SQLite — sobreviven al reinicio</p>
     </div>
   </div>
 
-  {% if transactions %}
+  {% if ventas %}
   <div class="overflow-x-auto">
     <table class="w-full">
       <thead>
         <tr style="background:#f8fafc;">
-          <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">#</th>
+          <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Comprobante</th>
           <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Fecha y hora</th>
-          <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Producto</th>
-          <th class="px-7 py-4 text-center text-slate-500 font-bold text-sm uppercase tracking-wide">Cant.</th>
-          <th class="px-7 py-4 text-right text-slate-500 font-bold text-sm uppercase tracking-wide">Precio u.</th>
+          <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Productos</th>
           <th class="px-7 py-4 text-left text-slate-500 font-bold text-sm uppercase tracking-wide">Estrategia</th>
+          <th class="px-7 py-4 text-right text-slate-500 font-bold text-sm uppercase tracking-wide">Subtotal</th>
+          <th class="px-7 py-4 text-right text-slate-500 font-bold text-sm uppercase tracking-wide">IGV</th>
           <th class="px-7 py-4 text-right text-slate-500 font-bold text-sm uppercase tracking-wide">Total</th>
         </tr>
       </thead>
       <tbody>
-        {% for tx in transactions %}
+        {% for v in ventas %}
         <tr class="border-t border-slate-100 hover:bg-slate-50 transition-colors">
-          <td class="px-7 py-4 text-slate-400 font-semibold text-base">{{ loop.revindex }}</td>
+          <td class="px-7 py-4">
+            <p class="font-mono text-sm font-semibold text-slate-700">{{ v.numero_comprobante }}</p>
+            <span class="badge" style="background:{% if v.tipo_comprobante == 'factura' %}#ede9fe{% else %}#e0e7ff{% endif %};color:#3730a3;">
+              {{ v.tipo_comprobante|capitalize }}
+            </span>
+          </td>
           <td class="px-7 py-4 font-mono text-sm text-slate-500 font-medium">
-            {{ tx.timestamp[:19].replace('T', ' ') }}
+            {{ v.timestamp[:19].replace('T', ' ') }}
           </td>
           <td class="px-7 py-4">
-            <p class="text-slate-900 font-semibold text-base">{{ tx.product_name }}</p>
+            {% for item in v.lineas %}
+            <p class="text-slate-800 text-sm">{{ item.quantity }}x {{ item.product_name }}</p>
+            {% endfor %}
           </td>
-          <td class="px-7 py-4 text-center">
-            <span class="text-slate-900 font-bold text-base">{{ tx.quantity }}</span>
+          <td class="px-7 py-4">
+            <span class="badge" style="background:#e0e7ff;color:#3730a3;">{{ v.estrategia_descuento }}</span>
           </td>
           <td class="px-7 py-4 text-right text-slate-600 font-medium text-base">
-            S/ {{ "%.2f"|format(tx.unit_price) }}
+            S/ {{ "%.2f"|format(v.subtotal) }}
           </td>
-          <td class="px-7 py-4">
-            <span class="badge" style="background:#e0e7ff;color:#3730a3;">{{ tx.strategy }}</span>
+          <td class="px-7 py-4 text-right text-slate-600 font-medium text-base">
+            S/ {{ "%.2f"|format(v.igv) }}
           </td>
           <td class="px-7 py-4 text-right">
-            <span class="text-slate-900 font-black text-xl">S/ {{ "%.2f"|format(tx.total) }}</span>
+            <span class="text-slate-900 font-black text-xl">S/ {{ "%.2f"|format(v.total) }}</span>
           </td>
         </tr>
         {% endfor %}
@@ -117,7 +154,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
       </svg>
     </div>
-    <p class="text-slate-600 font-bold text-xl">Sin transacciones aún</p>
+    <p class="text-slate-600 font-bold text-xl">Sin ventas que coincidan</p>
     <a href="{{ url_for('sales') }}"
        class="inline-block mt-3 text-indigo-600 font-semibold text-base hover:underline">
       Procesar primera venta →

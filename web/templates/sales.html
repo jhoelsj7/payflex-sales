@@ -1,52 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Nueva Venta{% endblock %}
 {% block heading %}Procesar Venta{% endblock %}
-{% block subheading %}Aplica descuentos con el patrón Strategy y notifica observadores{% endblock %}
+{% block subheading %}Carrito multi-producto — Strategy + Factory (comprobante) + Adapter/Strategy (pago) + Observer{% endblock %}
 
 {% block content %}
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-7">
 
-  <!-- ── Formulario ──────────────────────────────────── -->
+  <!-- ── Carrito ─────────────────────────────────────── -->
   <div class="space-y-6">
 
-    <!-- Estrategia -->
+    <!-- Agregar producto -->
     <div class="card overflow-hidden">
       <div class="px-7 py-5 border-b border-slate-100">
-        <h2 class="text-slate-900 font-bold text-xl">Estrategia de descuento</h2>
-        <p class="text-slate-400 text-base mt-1">Patrón Strategy — intercambiable en tiempo de ejecución</p>
+        <h2 class="text-slate-900 font-bold text-xl">Agregar producto al carrito</h2>
       </div>
-
-      <form method="POST" action="{{ url_for('process_sale') }}" id="sale-form" class="p-7 space-y-6">
-
-        <!-- Radio estrategias -->
-        <div class="grid grid-cols-1 gap-3">
-          {% set strategy_icons = {'1': '🚫', '2': '💸', '3': '⭐', '4': '🌸'} %}
-          {% set strategy_descs = {
-            '1': 'Precio original sin ningún descuento aplicado',
-            '2': 'Se descuenta el 10% del subtotal total',
-            '3': '20% base, 25% si la cantidad es 5 o más unidades',
-            '4': 'Descuento fijo del 15% por temporada especial'
-          } %}
-          {% for key, label in strategy_labels.items() %}
-          <label class="flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all
-                        {% if key == active_key %}border-indigo-500 bg-indigo-50{% else %}border-slate-200 hover:border-slate-300 bg-white{% endif %}">
-            <input type="radio" name="strategy_key" value="{{ key }}"
-                   {% if key == active_key %}checked{% endif %}
-                   class="w-5 h-5 accent-indigo-600 flex-shrink-0"/>
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">{{ strategy_icons[key] }}</span>
-              <div>
-                <p class="text-slate-900 font-semibold text-base">{{ label }}</p>
-                <p class="text-slate-400 text-sm mt-0.5">{{ strategy_descs[key] }}</p>
-              </div>
-            </div>
-          </label>
-          {% endfor %}
-        </div>
-
-        <hr class="border-slate-200"/>
-
-        <!-- Producto -->
+      <form method="POST" action="{{ url_for('cart_add') }}" class="p-7 space-y-5">
         <div>
           <label class="block text-slate-700 font-semibold text-base mb-2">Producto</label>
           {% if products %}
@@ -69,24 +37,130 @@
           </div>
           {% endif %}
         </div>
-
-        <!-- Cantidad -->
         <div>
           <label class="block text-slate-700 font-semibold text-base mb-2">Cantidad</label>
           <input type="number" name="quantity" min="1" value="1" required
                  class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
                         focus:outline-none focus:border-indigo-500"/>
-          <p class="text-slate-400 text-sm mt-2">💡 Cliente VIP: 5+ unidades aplica 25% de descuento total</p>
+        </div>
+        <button type="submit" {% if not products %}disabled{% endif %}
+                class="w-full text-white font-bold text-base py-3 rounded-xl transition-all
+                       {% if products %}hover:opacity-90{% else %}opacity-50 cursor-not-allowed{% endif %}"
+                style="background: linear-gradient(135deg,#4f46e5,#7c3aed);">
+          + Agregar al carrito
+        </button>
+      </form>
+    </div>
+
+    <!-- Carrito actual -->
+    <div class="card overflow-hidden">
+      <div class="px-7 py-5 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-slate-900 font-bold text-xl">Carrito ({{ cart|length }})</h2>
+        {% if cart %}
+        <form method="POST" action="{{ url_for('cart_clear') }}">
+          <button type="submit" class="text-red-500 text-sm font-semibold hover:underline">Vaciar</button>
+        </form>
+        {% endif %}
+      </div>
+      {% if cart %}
+      <div class="divide-y divide-slate-100">
+        {% for item in cart %}
+        <div class="px-7 py-4 flex items-center justify-between">
+          <div>
+            <p class="text-slate-900 font-semibold text-base">{{ item.name }}</p>
+            <p class="text-slate-400 text-sm">{{ item.quantity }} × S/ {{ "%.2f"|format(item.unit_price) }}</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <p class="text-slate-900 font-bold text-base">S/ {{ "%.2f"|format(item.unit_price * item.quantity) }}</p>
+            <form method="POST" action="{{ url_for('cart_remove', idx=loop.index0) }}">
+              <button type="submit" class="text-red-400 hover:text-red-600" title="Quitar">✕</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="px-7 py-5 border-t-2 border-slate-100 flex items-center justify-between" style="background:#f8fafc;">
+        <p class="text-slate-700 font-bold text-base uppercase tracking-wide">Subtotal carrito</p>
+        <p class="text-slate-900 font-black text-2xl">S/ {{ "%.2f"|format(cart_total) }}</p>
+      </div>
+      {% else %}
+      <div class="py-14 text-center">
+        <p class="text-slate-400 text-base">El carrito está vacío. Agrega productos arriba.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Checkout -->
+    {% if cart %}
+    <div class="card overflow-hidden">
+      <div class="px-7 py-5 border-b border-slate-100">
+        <h2 class="text-slate-900 font-bold text-xl">Confirmar venta</h2>
+        <p class="text-slate-400 text-base mt-1">Comprobante (Factory Method) + Descuento (Strategy) + Pago (Strategy/Adapter)</p>
+      </div>
+      <form method="POST" action="{{ url_for('process_sale') }}" id="sale-form" class="p-7 space-y-6">
+
+        <!-- Estrategia -->
+        <div>
+          <label class="block text-slate-700 font-semibold text-base mb-2">Estrategia de descuento</label>
+          <select name="strategy_key"
+                  class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                         focus:outline-none focus:border-indigo-500 bg-white">
+            {% for key, label in strategy_labels.items() %}
+              <option value="{{ key }}" {% if key == active_key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
         </div>
 
-        <button type="submit" {% if not products %}disabled{% endif %}
-                class="w-full text-white font-bold text-lg py-4 rounded-xl transition-all
-                       {% if products %}hover:opacity-90{% else %}opacity-50 cursor-not-allowed{% endif %}"
+        <!-- Comprobante -->
+        <div>
+          <label class="block text-slate-700 font-semibold text-base mb-2">Tipo de comprobante</label>
+          <div class="grid grid-cols-2 gap-3">
+            {% for key, label in comprobante_labels.items() %}
+            <label class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer
+                          {% if key == 'boleta' %}border-indigo-500 bg-indigo-50{% else %}border-slate-200{% endif %}">
+              <input type="radio" name="tipo_comprobante" value="{{ key }}"
+                     onchange="toggleRuc(this.value)"
+                     {% if key == 'boleta' %}checked{% endif %} class="w-5 h-5 accent-indigo-600"/>
+              <span class="text-slate-800 font-semibold text-base">{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div id="ruc-field" class="hidden">
+          <label class="block text-slate-700 font-semibold text-base mb-2">RUC del cliente (obligatorio para factura)</label>
+          <input type="text" name="cliente_ruc"
+                 class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                        focus:outline-none focus:border-indigo-500" placeholder="20123456789"/>
+        </div>
+
+        <div>
+          <label class="block text-slate-700 font-semibold text-base mb-2">Nombre del cliente (opcional)</label>
+          <input type="text" name="cliente_nombre"
+                 class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                        focus:outline-none focus:border-indigo-500"/>
+        </div>
+
+        <!-- Método de pago -->
+        <div>
+          <label class="block text-slate-700 font-semibold text-base mb-2">Método de pago</label>
+          <select name="metodo_pago"
+                  class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                         focus:outline-none focus:border-indigo-500 bg-white">
+            {% for key, label in pago_labels.items() %}
+              <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button type="submit"
+                class="w-full text-white font-bold text-lg py-4 rounded-xl transition-all hover:opacity-90"
                 style="background: linear-gradient(135deg,#059669,#047857);">
           Procesar venta →
         </button>
       </form>
     </div>
+    {% endif %}
   </div>
 
   <!-- ── Resultado ────────────────────────────────────── -->
@@ -102,34 +176,42 @@
           </div>
           <div>
             <h2 class="text-white font-bold text-xl">¡Venta procesada!</h2>
-            <p class="text-emerald-200 text-sm">Transacción guardada en la base de datos</p>
+            <p class="text-emerald-200 text-sm">{{ result.numero_comprobante }} — {{ result.tipo_comprobante|capitalize }}</p>
           </div>
         </div>
       </div>
 
       <div class="p-7 space-y-5">
+        <div class="rounded-xl p-4" style="background:#f8fafc;">
+          <p class="text-slate-400 text-sm font-semibold uppercase tracking-wide mb-2">Productos</p>
+          {% for item in result.lineas %}
+          <p class="text-slate-800 text-base">{{ item.quantity }}x {{ item.product }} — S/ {{ "%.2f"|format(item.unit_price) }} c/u</p>
+          {% endfor %}
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
-          <div class="rounded-xl p-4" style="background:#f8fafc;">
-            <p class="text-slate-400 text-sm font-semibold uppercase tracking-wide mb-1">Producto</p>
-            <p class="text-slate-900 font-bold text-lg">{{ result.product }}</p>
-          </div>
-          <div class="rounded-xl p-4" style="background:#f8fafc;">
-            <p class="text-slate-400 text-sm font-semibold uppercase tracking-wide mb-1">Cantidad</p>
-            <p class="text-slate-900 font-bold text-lg">{{ result.quantity }} unidades</p>
-          </div>
-          <div class="rounded-xl p-4" style="background:#f8fafc;">
-            <p class="text-slate-400 text-sm font-semibold uppercase tracking-wide mb-1">Precio unitario</p>
-            <p class="text-slate-900 font-bold text-lg">S/ {{ "%.2f"|format(result.unit_price) }}</p>
-          </div>
           <div class="rounded-xl p-4" style="background:#f8fafc;">
             <p class="text-slate-400 text-sm font-semibold uppercase tracking-wide mb-1">Descuento</p>
             <p class="text-slate-900 font-bold text-base leading-snug">{{ result.strategy }}</p>
+          </div>
+          <div class="rounded-xl p-4" style="background:#f8fafc;">
+            <p class="text-slate-400 text-sm font-semibold uppercase tracking-wide mb-1">Método de pago</p>
+            <p class="text-slate-900 font-bold text-base leading-snug">{{ pago_labels.get(result.metodo_pago, result.metodo_pago) }}</p>
+          </div>
+        </div>
+
+        <div class="rounded-xl p-4 space-y-1" style="background:#f8fafc;">
+          <div class="flex justify-between text-slate-600 text-base">
+            <span>Subtotal</span><span>S/ {{ "%.2f"|format(result.subtotal) }}</span>
+          </div>
+          <div class="flex justify-between text-slate-600 text-base">
+            <span>IGV (18%, solo factura)</span><span>S/ {{ "%.2f"|format(result.igv) }}</span>
           </div>
         </div>
 
         <!-- Total -->
         <div class="rounded-2xl p-7 text-center border-2 border-emerald-200" style="background:#f0fdf4;">
-          <p class="text-emerald-600 font-bold text-sm uppercase tracking-widest mb-2">Total a cobrar</p>
+          <p class="text-emerald-600 font-bold text-sm uppercase tracking-widest mb-2">Total cobrado</p>
           <p class="font-black text-emerald-800" style="font-size: 3.5rem; line-height:1;">
             S/ {{ "%.2f"|format(result.total) }}
           </p>
@@ -172,11 +254,26 @@
       </div>
       <p class="text-slate-700 font-bold text-xl">Resultado de venta</p>
       <p class="text-slate-400 text-base mt-2 max-w-xs">
-        Selecciona estrategia, producto y cantidad, luego procesa la venta para ver el resultado aquí.
+        Arma el carrito, elige comprobante y método de pago, luego procesa la venta para ver el resultado aquí.
       </p>
+      {% if cart %}
+      <a href="{{ url_for('undo_sale') }}" class="hidden"></a>
+      {% endif %}
+      <form method="POST" action="{{ url_for('undo_sale') }}" class="mt-6 w-full max-w-xs">
+        <button type="submit"
+                class="w-full text-center text-red-600 font-semibold text-sm py-3 rounded-xl border-2 border-red-200 hover:bg-red-50 transition-all">
+          ↩ Deshacer última venta
+        </button>
+      </form>
     </div>
     {% endif %}
   </div>
 
 </div>
+
+<script>
+function toggleRuc(tipo) {
+  document.getElementById('ruc-field').classList.toggle('hidden', tipo !== 'factura');
+}
+</script>
 {% endblock %}

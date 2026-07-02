@@ -1,5 +1,6 @@
 """Capa de negocio: observadores de ventas (patrón Observer)."""
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from business.venta import Venta
 from data.database import DatabaseManager
@@ -14,18 +15,14 @@ class IObservador(ABC):
 
 
 class InventoryObserver(IObservador):
-    """Actúa como gestor de inventario: descuenta stock y alerta si es bajo."""
+    """Actúa como gestor de inventario: descuenta stock de cada línea vendida."""
 
     def update(self, venta: Venta) -> None:
-        """Reduce el stock del producto vendido y persiste el cambio."""
-        producto = venta.producto
-        producto.stock -= venta.cantidad
-        DatabaseManager().save_product(producto)
-        if producto.stock < 5:
-            print(
-                f"  [ALERTA] Stock bajo para '{producto.name}'"
-                f" — quedan {producto.stock} unidades"
-            )
+        """Reduce el stock de cada producto de la venta y persiste el cambio."""
+        for item in venta.items:
+            producto = item.producto
+            producto.stock -= item.cantidad
+            DatabaseManager().save_product(producto)
 
 
 class ReportObserver(IObservador):
@@ -48,10 +45,32 @@ class ReportObserver(IObservador):
         """Acumula el total y muestra resumen de la transacción."""
         total = venta.calcular_total()
         self._total_sales += total
-        print(
-            f"  [Venta] {venta.cantidad}x '{venta.producto.name}'"
-            f" — S/ {total:.2f}"
-        )
+        resumen = ', '.join(f"{i.cantidad}x '{i.producto.name}'" for i in venta.items)
+        print(f"  [Venta] {resumen} — S/ {total:.2f}")
+
+
+class AdminNotificationObserver(IObservador):
+    """Persiste una alerta para el administrador cuando el stock queda bajo.
+
+    Se agrega como un observador más, sin modificar SaleManager ni los
+    observadores existentes (Open/Closed): consulta el stock ya actualizado
+    directamente en la base de datos, por lo que no depende del orden en que
+    se suscriban los observadores.
+    """
+
+    UMBRAL_STOCK_BAJO = 5
+
+    def update(self, venta: Venta) -> None:
+        """Revisa cada línea vendida y notifica si el producto quedó con stock bajo."""
+        db = DatabaseManager()
+        for item in venta.items:
+            producto_actual = db.get_product(item.producto.product_id)
+            if producto_actual and producto_actual.stock < self.UMBRAL_STOCK_BAJO:
+                mensaje = (f"Stock bajo: '{producto_actual.name}' "
+                          f"quedan {producto_actual.stock} unidades")
+                db.save_notification(mensaje, tipo='stock_bajo',
+                                     timestamp=datetime.now().isoformat())
+                print(f"  [ALERTA ADMIN] {mensaje}")
 
 
 class EmailObserver(IObservador):
@@ -59,7 +78,5 @@ class EmailObserver(IObservador):
 
     def update(self, venta: Venta) -> None:
         """Simula el envío de email de confirmación."""
-        print(
-            f"  [Email] Confirmacion enviada: {venta.cantidad}x '{venta.producto.name}'"
-            f" por S/ {venta.calcular_total():.2f}"
-        )
+        total = venta.calcular_total()
+        print(f"  [Email] Confirmacion enviada: venta por S/ {total:.2f}")

@@ -110,7 +110,7 @@
 
     {% if recent %}
     <div>
-      {% for tx in recent %}
+      {% for v in recent %}
       <div class="px-7 py-4 flex items-center justify-between border-b border-slate-50 hover:bg-slate-50 transition-colors">
         <div class="flex items-center gap-4">
           <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -120,13 +120,16 @@
             </svg>
           </div>
           <div>
-            <p class="text-slate-900 font-semibold text-base">{{ tx.product_name }}</p>
-            <p class="text-slate-400 text-sm">{{ tx.timestamp[:16].replace('T',' ') }} · {{ tx.strategy }}</p>
+            <p class="text-slate-900 font-semibold text-base">
+              {{ v.numero_comprobante }}
+              <span class="text-slate-400 font-normal text-sm">({{ v.lineas|length }} producto{{ 's' if v.lineas|length != 1 else '' }})</span>
+            </p>
+            <p class="text-slate-400 text-sm">{{ v.timestamp[:16].replace('T',' ') }} · {{ v.estrategia_descuento }}</p>
           </div>
         </div>
         <div class="text-right">
-          <p class="text-slate-900 font-bold text-lg">S/ {{ "%.2f"|format(tx.total) }}</p>
-          <p class="text-slate-400 text-sm">× {{ tx.quantity }} unid.</p>
+          <p class="text-slate-900 font-bold text-lg">S/ {{ "%.2f"|format(v.total) }}</p>
+          <p class="text-slate-400 text-sm">{{ v.tipo_comprobante|capitalize }}</p>
         </div>
       </div>
       {% endfor %}

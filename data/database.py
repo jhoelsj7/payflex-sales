@@ -3,7 +3,7 @@ import json
 import os
 from dataclasses import dataclass, field
 
-from sqlalchemy import Column, Float, Integer, String, Text, create_engine
+from sqlalchemy import Boolean, Column, Float, Integer, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -18,22 +18,48 @@ class ProductModel(Base):
     __tablename__ = 'products'
     product_id  = Column(String, primary_key=True)
     name        = Column(String, nullable=False)
+    description = Column(String, default='')
     price       = Column(Float,  nullable=False)
     stock       = Column(Integer, nullable=False)
     category    = Column(String, nullable=False)
     extra_attrs = Column(Text, default='{}')
 
 
+class VentaModel(Base):
+    """Cabecera de una venta: agrupa una o más líneas (TransactionModel)."""
+    __tablename__ = 'ventas'
+    id                  = Column(Integer, primary_key=True, autoincrement=True)
+    numero_comprobante  = Column(String, nullable=False, unique=True)
+    tipo_comprobante    = Column(String, nullable=False)  # boleta | factura
+    cliente_ruc         = Column(String, default='')
+    cliente_nombre      = Column(String, default='')
+    metodo_pago         = Column(String, nullable=False)
+    estrategia_descuento = Column(String, nullable=False)
+    subtotal            = Column(Float, nullable=False)
+    igv                 = Column(Float, nullable=False, default=0.0)
+    total                = Column(Float, nullable=False)
+    timestamp           = Column(String, nullable=False)
+
+
 class TransactionModel(Base):
+    """Línea de detalle de una venta (un producto dentro de la venta)."""
     __tablename__ = 'transactions'
     id           = Column(Integer, primary_key=True, autoincrement=True)
+    venta_id     = Column(Integer, nullable=False)
     product_id   = Column(String, nullable=False)
     product_name = Column(String, nullable=False)
     quantity     = Column(Integer, nullable=False)
     unit_price   = Column(Float, nullable=False)
-    total        = Column(Float, nullable=False)
-    strategy     = Column(String, nullable=False)
-    timestamp    = Column(String, nullable=False)
+    line_total   = Column(Float, nullable=False)
+
+
+class NotificationModel(Base):
+    __tablename__ = 'notifications'
+    id        = Column(Integer, primary_key=True, autoincrement=True)
+    mensaje   = Column(Text, nullable=False)
+    tipo      = Column(String, nullable=False, default='stock_bajo')
+    leida     = Column(Boolean, nullable=False, default=False)
+    timestamp = Column(String, nullable=False)
 
 
 class UserModel(Base):
@@ -71,6 +97,7 @@ class Product:
     price: float
     stock: int
     category: str
+    description: str = ''
     extra_attrs: dict = field(default_factory=dict)
 
 
@@ -131,9 +158,14 @@ class DatabaseManager:
 
     # ── Productos ─────────────────────────────────────────
 
-    def get_all_products(self) -> list:
+    def get_all_products(self, nombre: str | None = None, categoria: str | None = None) -> list:
         with self._Session() as s:
-            return [self._row_to_product(m) for m in s.query(ProductModel).all()]
+            query = s.query(ProductModel)
+            if nombre:
+                query = query.filter(ProductModel.name.ilike(f'%{nombre}%'))
+            if categoria:
+                query = query.filter(ProductModel.category == categoria)
+            return [self._row_to_product(m) for m in query.all()]
 
     def get_product(self, product_id: str):
         with self._Session() as s:
@@ -146,34 +178,90 @@ class DatabaseManager:
             if m:
                 m.name = product.name; m.price = product.price
                 m.stock = product.stock; m.category = product.category
+                m.description = product.description
                 m.extra_attrs = json.dumps(product.extra_attrs)
             else:
                 s.add(ProductModel(product_id=product.product_id, name=product.name,
+                                   description=product.description,
                                    price=product.price, stock=product.stock,
                                    category=product.category,
                                    extra_attrs=json.dumps(product.extra_attrs)))
             s.commit()
 
-    # ── Transacciones ─────────────────────────────────────
-
-    def save_transaction(self, transaction: dict) -> None:
+    def delete_product(self, product_id: str) -> None:
         with self._Session() as s:
-            s.add(TransactionModel(**{k: transaction[k] for k in
-                  ['product_id','product_name','quantity','unit_price','total','strategy','timestamp']}))
+            m = s.query(ProductModel).filter_by(product_id=product_id).first()
+            if m:
+                s.delete(m)
+                s.commit()
+
+    # ── Ventas (cabecera + líneas) ─────────────────────────
+
+    def next_numero_comprobante(self, tipo_comprobante: str) -> str:
+        """Calcula el siguiente número correlativo para 'boleta' o 'factura'."""
+        prefijo = 'B' if tipo_comprobante == 'boleta' else 'F'
+        with self._Session() as s:
+            count = s.query(VentaModel).filter_by(tipo_comprobante=tipo_comprobante).count()
+            return f"{prefijo}-{count + 1:06d}"
+
+    def save_venta(self, venta_data: dict, items: list) -> int:
+        """Persiste la cabecera de la venta y sus líneas de detalle. Retorna el id de la venta."""
+        with self._Session() as s:
+            venta = VentaModel(**venta_data)
+            s.add(venta)
+            s.commit()
+            s.refresh(venta)
+            for item in items:
+                s.add(TransactionModel(venta_id=venta.id, **item))
+            s.commit()
+            return venta.id
+
+    def delete_venta(self, venta_id: int) -> None:
+        """Elimina una venta completa: cabecera y todas sus líneas (usado por undo)."""
+        with self._Session() as s:
+            s.query(TransactionModel).filter_by(venta_id=venta_id).delete()
+            s.query(VentaModel).filter_by(id=venta_id).delete()
             s.commit()
 
-    def get_transactions(self) -> list:
+    def get_ventas(self, fecha_desde: str | None = None, fecha_hasta: str | None = None,
+                  product_id: str | None = None, total_min: float | None = None) -> list:
+        """Retorna las ventas (cabecera + líneas) aplicando filtros opcionales."""
         with self._Session() as s:
-            rows = s.query(TransactionModel).order_by(TransactionModel.id).all()
-            return [self._row_to_dict(m) for m in rows]
+            query = s.query(VentaModel)
+            if fecha_desde:
+                query = query.filter(VentaModel.timestamp >= fecha_desde)
+            if fecha_hasta:
+                query = query.filter(VentaModel.timestamp <= fecha_hasta + 'T23:59:59')
+            if total_min is not None:
+                query = query.filter(VentaModel.total >= total_min)
+            ventas = query.order_by(VentaModel.id).all()
 
-    def delete_transaction(self, product_id: str, timestamp: str) -> None:
-        """Elimina una transacción puntual (usado por RegistrarVentaCommand.undo)."""
+            resultado = []
+            for v in ventas:
+                lineas = s.query(TransactionModel).filter_by(venta_id=v.id).all()
+                if product_id and not any(l.product_id == product_id for l in lineas):
+                    continue
+                resultado.append(self._row_to_venta(v, lineas))
+            return resultado
+
+    # ── Notificaciones ──────────────────────────────────────
+
+    def save_notification(self, mensaje: str, tipo: str, timestamp: str) -> None:
         with self._Session() as s:
-            row = s.query(TransactionModel).filter_by(
-                product_id=product_id, timestamp=timestamp).first()
-            if row:
-                s.delete(row)
+            s.add(NotificationModel(mensaje=mensaje, tipo=tipo, timestamp=timestamp))
+            s.commit()
+
+    def get_notifications(self) -> list:
+        with self._Session() as s:
+            rows = s.query(NotificationModel).order_by(NotificationModel.id.desc()).all()
+            return [{'id': n.id, 'mensaje': n.mensaje, 'tipo': n.tipo,
+                    'leida': n.leida, 'timestamp': n.timestamp} for n in rows]
+
+    def mark_notification_read(self, notification_id: int) -> None:
+        with self._Session() as s:
+            n = s.query(NotificationModel).filter_by(id=notification_id).first()
+            if n:
+                n.leida = True
                 s.commit()
 
     # ── Usuarios ──────────────────────────────────────────
@@ -203,12 +291,26 @@ class DatabaseManager:
     def _row_to_product(self, m: ProductModel) -> Product:
         return Product(product_id=m.product_id, name=m.name, price=m.price,
                        stock=m.stock, category=m.category,
+                       description=m.description or '',
                        extra_attrs=json.loads(m.extra_attrs or '{}'))
 
-    def _row_to_dict(self, m: TransactionModel) -> dict:
-        return {'product_id': m.product_id, 'product_name': m.product_name,
-                'quantity': m.quantity, 'unit_price': m.unit_price,
-                'total': m.total, 'strategy': m.strategy, 'timestamp': m.timestamp}
+    def _row_to_venta(self, v: VentaModel, lineas: list) -> dict:
+        return {
+            'id': v.id,
+            'numero_comprobante': v.numero_comprobante,
+            'tipo_comprobante': v.tipo_comprobante,
+            'cliente_ruc': v.cliente_ruc,
+            'cliente_nombre': v.cliente_nombre,
+            'metodo_pago': v.metodo_pago,
+            'estrategia_descuento': v.estrategia_descuento,
+            'subtotal': v.subtotal,
+            'igv': v.igv,
+            'total': v.total,
+            'timestamp': v.timestamp,
+            'lineas': [{'product_id': l.product_id, 'product_name': l.product_name,
+                       'quantity': l.quantity, 'unit_price': l.unit_price,
+                       'line_total': l.line_total} for l in lineas],
+        }
 
 
 assert DatabaseManager() is DatabaseManager(), "Singleton roto"

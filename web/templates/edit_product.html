@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Editar Producto{% endblock %}
+{% block heading %}Modificar Producto{% endblock %}
+{% block subheading %}RF01 — actualizar un producto existente{% endblock %}
+
+{% block content %}
+<div class="max-w-xl">
+  <div class="card overflow-hidden">
+    <div class="px-7 py-6" style="background: linear-gradient(135deg,#4f46e5,#7c3aed);">
+      <h2 class="text-white font-bold text-xl">{{ product.name }}</h2>
+      <p class="text-indigo-200 text-sm mt-1">ID: {{ product.product_id }} · Categoría: {{ product.category }}</p>
+    </div>
+    <form method="POST" class="p-7 space-y-5">
+      <div>
+        <label class="block text-slate-700 font-semibold text-base mb-2">Nombre</label>
+        <input type="text" name="name" value="{{ product.name }}" required
+               class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                      focus:outline-none focus:border-indigo-500"/>
+      </div>
+      <div>
+        <label class="block text-slate-700 font-semibold text-base mb-2">Descripción</label>
+        <input type="text" name="description" value="{{ product.description }}"
+               class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                      focus:outline-none focus:border-indigo-500"/>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-slate-700 font-semibold text-base mb-2">Precio (S/)</label>
+          <input type="number" name="price" step="0.01" min="0.01" value="{{ product.price }}" required
+                 class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                        focus:outline-none focus:border-indigo-500"/>
+        </div>
+        <div>
+          <label class="block text-slate-700 font-semibold text-base mb-2">Stock</label>
+          <input type="number" name="stock" min="0" value="{{ product.stock }}" required
+                 class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800
+                        focus:outline-none focus:border-indigo-500"/>
+        </div>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="submit"
+                class="flex-1 text-white font-bold text-base py-3 rounded-xl transition-all hover:opacity-90"
+                style="background: linear-gradient(135deg,#4f46e5,#7c3aed);">
+          Guardar cambios
+        </button>
+        <a href="{{ url_for('products') }}"
+           class="flex-1 text-center text-slate-600 font-bold text-base py-3 rounded-xl border-2 border-slate-200 hover:bg-slate-50">
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

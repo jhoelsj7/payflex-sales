@@ -37,6 +37,7 @@ class ElectronicProductFactory(ProductFactory):
             price=price,
             stock=stock,
             category='electronic',
+            description=kwargs.get('description', ''),
             extra_attrs={'warranty_months': kwargs.get('warranty_months', 12)},
         )
 
@@ -53,6 +54,7 @@ class ClothingProductFactory(ProductFactory):
             price=price,
             stock=stock,
             category='clothing',
+            description=kwargs.get('description', ''),
             extra_attrs={
                 'size': kwargs.get('size', 'M'),
                 'material': kwargs.get('material', 'algodón'),
@@ -72,5 +74,6 @@ class FoodProductFactory(ProductFactory):
             price=price,
             stock=stock,
             category='food',
+            description=kwargs.get('description', ''),
             extra_attrs={'expiry_date': kwargs.get('expiry_date', str(date.today()))},
         )

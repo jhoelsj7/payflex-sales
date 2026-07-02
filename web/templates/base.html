@@ -93,6 +93,17 @@
         </svg>
         Reportes
       </a>
+
+      {% set user = current_user() %}
+      {% if user and user.role == 'admin' %}
+      <a href="{{ url_for('notifications') }}"
+         class="nav-link {% if request.endpoint == 'notifications' %}active{% endif %}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .53-.21 1.04-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+        Notificaciones
+      </a>
+      {% endif %}
     </nav>
 
     <!-- Patrones -->
@@ -104,6 +115,9 @@
         <span class="badge" style="background:#064e3b;color:#6ee7b7;">Observer</span>
         <span class="badge" style="background:#78350f;color:#fcd34d;">Strategy</span>
         <span class="badge" style="background:#7f1d1d;color:#fca5a5;">Facade</span>
+        <span class="badge" style="background:#164e63;color:#67e8f9;">Adapter</span>
+        <span class="badge" style="background:#581c87;color:#d8b4fe;">Decorator</span>
+        <span class="badge" style="background:#831843;color:#f9a8d4;">Command</span>
       </div>
       <p class="text-slate-600 text-xs mt-4 text-center">Universidad LaSalle · 2026</p>
     </div>
